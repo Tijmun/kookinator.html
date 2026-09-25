@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>De Kookinator – wat eet ik vanavond?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5C542; --ink:#2B1633; --soft:#5a3f5f; --card:#FFFDF6; --line:#2B1633;
+  --yes:#1F7A4D; --no:#B7321F; --pot:#2B1633; --steam:#ffffff;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#241129; --ink:#FBE7A1; --soft:#d9c28a; --card:#351C3C; --line:#FBE7A1;
+    --yes:#3FAE76; --no:#E0604B; --pot:#FBE7A1; --steam:#FBE7A1;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#241129; --ink:#FBE7A1; --soft:#d9c28a; --card:#351C3C; --line:#FBE7A1;
+  --yes:#3FAE76; --no:#E0604B; --pot:#FBE7A1; --steam:#FBE7A1;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.5;min-height:100vh}
+main{max-width:520px;margin:0 auto;padding:20px 18px 40px}
+h1,h2,.q{font-family:"Young Serif",Georgia,"Times New Roman",serif;font-weight:400}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+header h1{font-size:1.35rem;margin:0}
+.link{background:none;border:0;color:var(--ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 2px}
+.stage{display:flex;flex-direction:column;align-items:center;margin-top:10px}
+svg.geest{width:180px;height:auto;overflow:visible}
+.steam path{fill:none;stroke:var(--steam);stroke-width:5;stroke-linecap:round;opacity:.85}
+@media (prefers-reduced-motion:no-preference){
+  .steam path{animation:rise 2.6s ease-in-out infinite}
+  .steam path:nth-child(2){animation-delay:.6s}
+  .steam path:nth-child(3){animation-delay:1.2s}
+  .thinking .pupil{animation:look 1.6s ease-in-out infinite}
+}
+@keyframes rise{0%{transform:translateY(6px);opacity:0}40%{opacity:.9}100%{transform:translateY(-14px);opacity:0}}
+@keyframes look{0%,100%{transform:translateX(-3px)}50%{transform:translateX(3px)}}
+.bubble{position:relative;background:var(--card);border:2.5px solid var(--line);border-radius:22px;padding:22px 20px 20px;width:100%;margin-top:6px}
+.bubble::before{content:"";position:absolute;top:-13px;left:50%;width:22px;height:22px;background:var(--card);border-left:2.5px solid var(--line);border-top:2.5px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.count{font-size:.9rem;color:var(--soft);margin:0 0 6px}
+.q{font-size:1.55rem;line-height:1.25;margin:0 0 18px}
+.answers{display:grid;gap:9px}
+.answers button,.btn{font:inherit;font-weight:600;border:2.5px solid var(--line);background:transparent;color:var(--ink);border-radius:14px;padding:12px 16px;text-align:left;cursor:pointer;transition:background .15s,transform .1s}
+.answers button:hover{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.answers button:active,.btn:active{transform:scale(.98)}
+.answers .a-yes{background:var(--yes);border-color:var(--yes);color:#fff}
+.answers .a-no{background:var(--no);border-color:var(--no);color:#fff}
+.answers .a-yes:hover{background:var(--yes)} .answers .a-no:hover{background:var(--no)}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.meter{margin-top:18px;display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--soft)}
+.meter .bar{flex:1;height:8px;border-radius:8px;background:color-mix(in srgb,var(--ink) 15%,transparent);overflow:hidden}
+.meter .fill{height:100%;background:var(--ink);width:0;transition:width .4s}
+.guess{text-align:center}
+.guess .emoji{font-size:4.2rem;line-height:1;margin:4px 0 8px}
+.guess h2{font-size:2rem;line-height:1.15;margin:0 0 8px}
+.guess p{margin:0 auto 18px;max-width:34ch;color:var(--soft)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.row .btn{text-align:center;flex:1 1 140px}
+.btn.primary{background:var(--yes);border-color:var(--yes);color:#fff}
+.alts{margin-top:20px;text-align:left;border-top:2px dashed color-mix(in srgb,var(--ink) 35%,transparent);padding-top:14px}
+.alts h3{font-size:1rem;margin:0 0 8px}
+.alts ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.alts li{display:flex;gap:10px;align-items:center}
+.intro p{margin:0 0 18px}
+.foot{margin-top:18px;text-align:center;font-size:.85rem;color:var(--soft)}
+.remark{font-style:italic;color:var(--soft);margin:0 0 10px;min-height:1.5em}
+.gut{font-size:.92rem;font-style:italic;border-left:3px solid var(--ink);text-align:left;padding-left:10px;max-width:36ch}
+.alt{font:inherit;background:none;border:0;color:var(--ink);display:flex;gap:10px;align-items:center;padding:4px 0;cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--ink) 35%,transparent)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>De Kookinator</h1>
+    <button class="link" id="restart" hidden>Opnieuw</button>
+  </header>
+
+  <div class="stage">
+    <svg class="geest" id="geest" viewBox="0 0 200 170" aria-hidden="true">
+      <g class="steam">
+        <path d="M70 40c-8-10 8-16 0-28"/>
+        <path d="M100 36c-8-10 8-16 0-28"/>
+        <path d="M130 40c-8-10 8-16 0-28"/>
+      </g>
+      <rect x="22" y="62" width="156" height="16" rx="8" fill="var(--pot)"/>
+      <path d="M36 78h128v44c0 22-18 38-40 38H76c-22 0-40-16-40-38z" fill="var(--pot)"/>
+      <path d="M36 92H14M164 92h22" stroke="var(--pot)" stroke-width="10" stroke-linecap="round"/>
+      <g id="face">
+        <circle cx="80" cy="110" r="13" fill="var(--bg)"/>
+        <circle cx="120" cy="110" r="13" fill="var(--bg)"/>
+        <circle class="pupil" cx="80" cy="112" r="6" fill="var(--pot)"/>
+        <circle class="pupil" cx="120" cy="112" r="6" fill="var(--pot)"/>
+        <path id="mouth" d="M88 136q12 8 24 0" stroke="var(--bg)" stroke-width="5" fill="none" stroke-linecap="round"/>
+      </g>
+    </svg>
+
+    <section class="bubble" id="panel" aria-live="polite"></section>
+  </div>
+  <p class="foot">Denk niet te lang na. Je buik weet het antwoord al.</p>
+</main>
+
+<script>
+// ---------- Stemmingsvragen (psychologie) ----------
+// Deze vragen gaan over jou, niet over eten. Ze duwen zachtjes in een richting.
+const MOOD = {
+  dag:{q:"Was het een zware dag?",fx:{comfort:1,snel:.4,bestellen:.5,licht:-.5},yes:"Dan heb je iets goeds verdiend.",no:"Mooi, dan staat je hoofd open voor iets nieuws."},
+  moe:{q:"Ben je moe?",fx:{snel:1,eenpan:.7,bestellen:.6,stoof:-.8,oven:-.3},yes:"Dan gaan we niet uren in de keuken staan.",no:"Energie over, dat opent deuren."},
+  honger:{q:"Heb je honger als een paard?",fx:{licht:-1,comfort:.7,koud:-.6,delen:.3},yes:"Dat hoor ik aan je maag.",no:"Iets kleiners dus. Genoteerd."},
+  samen:{q:"Eet je vanavond met anderen?",fx:{delen:1,oven:.4,luxe:.3},yes:"Gezellig. Iets om samen van te eten dan.",no:"Alleen eten mag ook heerlijk zijn."},
+  weer:{q:"Is het koud of guur buiten?",fx:{soep:.8,stoof:1,comfort:.6,koud:-1,licht:-.3},yes:"Iets warms dus.",no:"Dan mag het ook fris zijn."},
+  vieren:{q:"Wil je jezelf vanavond verwennen?",fx:{luxe:1,bestellen:.5,goedkoop:-.7},yes:"Dat mag. Het leven is kort.",no:"Lekker hoeft niet duur te zijn."},
+  sport:{q:"Heb je vandaag gesport?",fx:{gezond:.6,kip:.5,rijst:.3,licht:-.3},yes:"Dan willen je spieren iets terug.",no:"Geen oordeel hier."}
+};
+
+// ---------- Etenvragen ----------
+// soft: "nee" betekent "maakt niet uit"
+const QUESTIONS = {
+  kip:{q:"Heb je zin in kip?"},
+  rund:{q:"Heb je zin in rundvlees of gehakt?"},
+  varken:{q:"Mag er spek, ham of worst in?"},
+  vis:{q:"Heb je zin in vis of garnalen?"},
+  vega:{q:"Moet het vegetarisch zijn?",soft:true},
+  vegan:{q:"Moet het helemaal plantaardig zijn?",soft:true},
+  rijst:{q:"Heb je zin in rijst?"},
+  pasta:{q:"Heb je zin in pasta?"},
+  aardappel:{q:"Wil je aardappels of friet erbij?"},
+  noodles:{q:"Heb je zin in noodles?"},
+  brood:{q:"Heb je zin in iets met brood of wraps?"},
+  soep:{q:"Heb je zin in soep?"},
+  gezond:{q:"Wil je vooral gezond eten?",soft:true},
+  snel:{q:"Moet het binnen een halfuur op tafel staan?",soft:true},
+  goedkoop:{q:"Moet het goedkoop blijven?",soft:true},
+  eenpan:{q:"Wil je zo min mogelijk afwas?",soft:true},
+  bestellen:{q:"Wil je eigenlijk liever bestellen dan koken?"},
+  comfort:{q:"Heb je zin in echt troostvoer?"},
+  licht:{q:"Wil je iets lichts eten?"},
+  koud:{q:"Heb je meer zin in iets fris, zoals een salade?"},
+  pittig:{q:"Mag het pittig zijn?"},
+  kaas:{q:"Moet er kaas in of op?"},
+  oven:{q:"Heb je zin in iets uit de oven?"},
+  stoof:{q:"Heb je zin in iets dat lang heeft gestoofd?"},
+  delen:{q:"Zie je jezelf graag van schalen pakken en delen?"},
+  luxe:{q:"Mag het een beetje feestelijk zijn?"},
+  aziatisch:{q:"Denk je aan de Aziatische keuken?"},
+  italiaans:{q:"Denk je aan de Italiaanse keuken?"},
+  mexicaans:{q:"Denk je aan iets Mexicaans?"},
+  hollands:{q:"Heb je zin in iets ouderwets Hollands?"},
+  oosters:{q:"Denk je aan iets uit het Midden-Oosten of Noord-Afrika?"},
+  med:{q:"Denk je aan iets Grieks of Spaans?"},
+  indiaas:{q:"Denk je aan de Indiase keuken?"}
+};
+const CUISINES=["aziatisch","italiaans","mexicaans","hollands","oosters","med","indiaas"];
+const MEATS=["kip","rund","varken","vis"];
+
+// ---------- Gerechten ----------
+// tag = ja, ?tag = misschien, niet genoemd = nee
+const RAW = [
+ // Aziatisch
+ ["Kip teriyaki met rijst","🍗","Kleverige, zoete kip met rijst en broccoli.","kip rijst aziatisch snel ?gezond eenpan"],
+ ["Zalm teriyaki","🐟","Glanzende zalm, rijst en sesam.","vis rijst aziatisch snel gezond"],
+ ["Nasi goreng","🍳","Gebakken rijst met een ei erop. Goed voor restjes.","rijst aziatisch ?kip snel eenpan goedkoop ?pittig"],
+ ["Bami goreng","🍜","Gebakken mie met groenten en kip of varken.","noodles aziatisch ?kip ?varken eenpan goedkoop"],
+ ["Pad thai","🥜","Rijstnoedels met ei, taugé, pinda en limoen.","noodles aziatisch ?kip snel ?pittig eenpan"],
+ ["Udon roerbak","🥢","Dikke noedels, groenten en een snelle saus.","noodles aziatisch ?kip snel eenpan"],
+ ["Groene Thaise curry","🥥","Kokosmelk, groene curry, kip en jasmijnrijst.","kip rijst aziatisch pittig ?gezond eenpan"],
+ ["Kipsaté met rijst","🍢","Kippendijen met pindasaus, atjar en kroepoek.","kip rijst aziatisch comfort ?hollands"],
+ ["Kip ketjap","🍯","Zoete sojakip met rijst en sperzieboontjes.","kip rijst aziatisch eenpan goedkoop ?snel"],
+ ["Rendang","🔥","Rund dat uren stooft in kokos en specerijen.","rund rijst aziatisch stoof pittig luxe"],
+ ["Rijsttafel","🍱","Een tafel vol kleine schaaltjes om te delen.","rijst aziatisch delen luxe ?kip ?pittig comfort"],
+ ["Babi pangang","🥡","Krokant varken in rode saus, van de Chinees.","varken rijst aziatisch bestellen comfort"],
+ ["Chinees afhalen","🥡","Foe yong hai, tjap tjoy en een bak nasi.","rijst aziatisch bestellen delen comfort ?kip ?varken"],
+ ["Katsu curry","🍛","Gepaneerde kip met milde Japanse curry.","kip rijst aziatisch comfort"],
+ ["Bibimbap","🌶️","Rijst, groenten, gebakken ei en gochujang.","rijst aziatisch ?rund pittig gezond"],
+ ["Dumplings","🥟","Gyoza of dim sum om te dippen.","aziatisch ?varken bestellen delen"],
+ ["Poké bowl","🥗","Rijst met zalm of tonijn, avocado en edamame.","rijst vis gezond licht aziatisch koud snel"],
+ ["Sushi","🍣","Laat een ander het rolwerk doen.","rijst vis aziatisch licht bestellen ?gezond koud delen luxe"],
+ ["Ramen","🍥","Rijke bouillon, noedels, ei en een plakje varken.","soep noodles aziatisch ?varken comfort bestellen"],
+ ["Pho","🍲","Heldere bouillon met rijstnoedels en verse kruiden.","soep noodles aziatisch rund gezond licht"],
+ ["Tom kha kai","🥥","Zure, romige kokossoep met kip.","soep kip aziatisch pittig licht"],
+ ["Roerbak met tofu","🥦","Knapperige groenten, tofu en sojasaus.","vega vegan aziatisch gezond snel eenpan ?rijst ?noodles"],
+ // Indiaas
+ ["Kip tikka masala","🍛","Romige tomatencurry met kip, rijst en naan.","kip rijst indiaas ?pittig comfort ?brood"],
+ ["Butter chicken","🧈","Mild, boterzacht en romig.","kip rijst indiaas comfort ?brood"],
+ ["Biryani","🍚","Geurige rijst met specerijen en kip.","rijst indiaas ?kip pittig luxe eenpan"],
+ ["Chana masala","🫘","Kikkererwten in pittige tomatensaus.","vega vegan indiaas pittig goedkoop eenpan ?rijst"],
+ ["Linzendahl","🫘","Romige linzen met kurkuma, rijst of naan.","vega vegan indiaas gezond goedkoop ?pittig eenpan ?rijst"],
+ ["Saag paneer","🥬","Spinazie met blokjes Indiase kaas.","vega indiaas kaas gezond ?rijst"],
+ // Italiaans
+ ["Spaghetti bolognese","🍝","Gehakt, tomaat en lang laten pruttelen.","pasta rund italiaans comfort goedkoop ?kaas ?stoof"],
+ ["Lasagne","🧀","Laagjes pasta, ragù en bechamel uit de oven.","pasta rund italiaans oven kaas comfort delen"],
+ ["Groentelasagne","🥬","Lasagne met courgette, spinazie en ricotta.","pasta vega italiaans oven kaas gezond"],
+ ["Pasta pesto","🌿","Pasta, pesto, cherrytomaatjes en pijnboompitten.","pasta vega italiaans snel goedkoop ?kaas eenpan"],
+ ["Pasta carbonara","🥓","Spek, ei, pecorino en veel peper.","pasta varken italiaans snel kaas comfort"],
+ ["Penne arrabbiata","🌶️","Tomaat, knoflook en flink wat chili.","pasta vega vegan italiaans pittig snel goedkoop eenpan"],
+ ["Aglio e olio","🧄","Spaghetti met knoflook, olie en peterselie.","pasta vega vegan italiaans snel goedkoop licht"],
+ ["Pasta met garnalen","🦐","Garnalen, citroen, knoflook en een scheut room.","pasta vis italiaans snel luxe"],
+ ["Ovengnocchi","🍅","Gnocchi in tomatensaus met gesmolten mozzarella.","italiaans vega oven kaas comfort ?aardappel"],
+ ["Verse ravioli","🥟","Uit de koeling, met salie en boter.","pasta italiaans kaas snel ?vega"],
+ ["Pizza","🍕","Bestellen of zelf beleggen. Allebei goed.","italiaans kaas comfort bestellen oven ?vega ?brood delen"],
+ ["Paddenstoelenrisotto","🍄","Romig, rustig roeren, flinke hap parmezaan.","rijst vega italiaans kaas comfort eenpan ?luxe"],
+ ["Gehaktballen in tomatensaus","🍝","Met brood om de saus op te deppen.","rund comfort stoof ?pasta ?italiaans goedkoop ?brood"],
+ // Mexicaans
+ ["Taco's","🌮","Zachte tortilla's met gehakt, salsa en limoen.","?rund mexicaans snel ?pittig ?kaas brood delen"],
+ ["Vistaco's","🐠","Krokante vis, koolsla en limoenmayo.","vis mexicaans brood snel licht"],
+ ["Fajitas","🫑","Sissende kip en paprika, zelf wraps vullen.","kip mexicaans brood snel delen ?pittig"],
+ ["Burrito bowl","🌯","Rijst, bonen, mais, kip en guacamole.","rijst mexicaans ?kip gezond ?pittig"],
+ ["Quesadilla","🧀","Tortilla met gesmolten kaas, snel uit de pan.","mexicaans kaas brood snel ?kip goedkoop"],
+ ["Nacho's uit de oven","🧀","Een ovenschaal chips, kaas en salsa.","mexicaans kaas oven delen comfort ?rund"],
+ ["Enchiladas","🌯","Gevulde tortilla's met saus en kaas uit de oven.","mexicaans oven kaas ?kip comfort"],
+ ["Chili con carne","🌶️","Gehakt, bonen en kruiden. Lang laten staan.","rund mexicaans pittig stoof comfort ?rijst eenpan goedkoop"],
+ ["Chili sin carne","🌶️","Bonen, tomaat en kruiden. Nog lekkerder op dag twee.","vega vegan mexicaans pittig eenpan gezond goedkoop ?rijst"],
+ // Hollands en Belgisch
+ ["Boerenkool met rookworst","🥔","Stamppot met jus en een dikke rookworst.","aardappel varken hollands comfort goedkoop eenpan"],
+ ["Andijviestamppot met spekjes","🥬","Rauwe andijvie door de puree, spekjes erover.","aardappel varken hollands snel eenpan goedkoop comfort"],
+ ["Zuurkool met worst","🥔","Zuur en zout, precies wat een winteravond vraagt.","aardappel varken hollands comfort goedkoop eenpan"],
+ ["Hutspot met klapstuk","🥕","Wortel, ui en aardappel. Opa zou trots zijn.","aardappel hollands comfort goedkoop ?rund ?stoof"],
+ ["Hachee met rode kool","🧅","Ui en rundvlees, uren gestoofd.","rund hollands stoof comfort aardappel goedkoop"],
+ ["Stoofvlees met friet","🍺","Vlaams stoofvlees in bier, met mayo.","rund aardappel stoof comfort ?hollands"],
+ ["Aardappels, groente, vlees","🍽️","Een slavink of schnitzel met sperzieboontjes.","aardappel hollands ?varken ?rund ?gezond"],
+ ["Cordon bleu met friet","🧀","Gepaneerd met ham en kaas erin.","?kip varken kaas aardappel comfort hollands"],
+ ["Kip kerrie","🍛","Hollandse kerriesaus met rijst. Jeugdsentiment.","kip rijst hollands comfort snel goedkoop"],
+ ["Pannenkoeken","🥞","Spek, kaas, appel of stroop. Iedereen blij.","hollands comfort goedkoop ?vega ?kaas ?varken delen"],
+ ["Uitsmijter","🍳","Brood, ham, kaas en drie spiegeleieren.","brood hollands snel goedkoop ?kaas ?varken licht"],
+ ["Erwtensoep","🫛","Dikke snert met roggebrood en katenspek.","soep hollands varken comfort goedkoop stoof"],
+ ["Kippensoep","🐔","Heldere bouillon met balletjes. Goed voor ziel en keel.","soep kip gezond licht comfort ?hollands"],
+ ["Friet met een snack","🍟","Frikandel speciaal of een kroket, van de snackbar.","aardappel bestellen comfort hollands goedkoop ?varken"],
+ ["Kapsalon","🥡","Friet, shoarma, kaas en sla in één bak.","?kip aardappel kaas bestellen comfort hollands"],
+ ["Kibbeling met friet","🍟","Gefrituurde vis, remoulade en een bak friet.","vis aardappel comfort bestellen hollands"],
+ ["Kabeljauw met puree","🐟","Gebakken vis, boter en spinazie.","vis aardappel gezond ?hollands"],
+ ["Mosselen met friet","🦪","Een pan vol mosselen, witte wijn en brood.","vis aardappel luxe delen ?hollands"],
+ // Midden-Oosten en mediterraan
+ ["Shoarma","🥙","Pita met shoarma, knoflooksaus en sla.","brood oosters ?kip bestellen comfort"],
+ ["Falafel met hummus","🧆","Falafel, hummus, salade en warm pitabrood.","vega vegan oosters brood gezond delen"],
+ ["Shakshuka","🍳","Eieren in pittige tomatensaus, met brood.","vega oosters eenpan snel gezond ?pittig brood goedkoop"],
+ ["Kiptajine","🏺","Kip met citroen, olijven en specerijen, langzaam gegaard.","kip oosters stoof ?pittig gezond eenpan luxe"],
+ ["Kofta met bulgur","🍢","Gekruide gehaktspiesjes met yoghurtsaus.","rund oosters gezond ?brood"],
+ ["Couscous met geroosterde groenten","🥘","Kikkererwten, groenten en harissa.","vega vegan oosters gezond ?pittig ?oven goedkoop"],
+ ["Griekse salade","🫒","Tomaat, komkommer, olijven en feta.","vega koud licht gezond snel kaas med"],
+ ["Gyros met tzatziki","🥙","Varkensgyros, friet en veel knoflook.","varken med aardappel comfort ?bestellen ?brood"],
+ ["Moussaka","🍆","Aubergine, gehakt en bechamel uit de oven.","rund med oven kaas comfort"],
+ ["Paella","🥘","Saffraanrijst met zeevruchten uit één grote pan.","rijst vis ?kip delen luxe med eenpan"],
+ ["Gambas al ajillo","🦐","Garnalen in knoflookolie met stokbrood.","vis brood snel luxe med delen licht"],
+ // Oven, grill en overig
+ ["Kip-traybake","🍗","Kippendijen, aardappel en groenten op één bakplaat.","kip aardappel oven gezond eenpan"],
+ ["Kippenpoten met friet","🍗","Knapperige kip uit de oven. Met je handen eten.","kip aardappel oven comfort goedkoop"],
+ ["Piri piri kip","🌶️","Pittig gemarineerde kip met aardappeltjes.","kip pittig oven ?aardappel"],
+ ["Zalm uit de oven","🐟","Zalm, citroen en groenten op één bakplaat.","vis gezond oven licht ?aardappel eenpan"],
+ ["Biefstuk met friet","🥩","Biefstuk, bearnaise en friet. Omdat het kan.","rund aardappel comfort luxe"],
+ ["Spareribs","🍖","Kleverig, zoet en met je handen.","varken comfort delen ?bestellen ?aardappel"],
+ ["Pulled pork broodjes","🐖","Uren gegaard varken met coleslaw.","varken brood stoof comfort delen"],
+ ["Hamburgers","🍔","Sappige burger, broodje, kaas en augurk.","rund brood comfort ?bestellen ?kaas ?aardappel"],
+ ["Hotdogs","🌭","Worstje, broodje, uitjes. Klaar.","brood varken snel comfort goedkoop"],
+ ["Kaasfondue","🫕","Een pan gesmolten kaas en een berg brood.","vega kaas brood delen luxe comfort"],
+ ["Quiche","🥧","Hartige taart met ei, kaas en groenten.","?vega oven kaas ?varken"],
+ ["Zoete-aardappelovenschotel","🍠","Zoete aardappel, spinazie en feta uit de oven.","vega oven gezond aardappel ?kaas"],
+ ["Mac and cheese","🧀","Pasta in een bad van kaassaus, krokant korstje.","pasta vega kaas oven comfort"],
+ ["Macaroni met ham en kaas","🧀","Doordeweeks troostvoer.","pasta varken kaas ?oven comfort goedkoop ?hollands"],
+ // Licht en snel
+ ["Caesarsalade met kip","🥬","Knapperige sla, kip, croutons en parmezaan.","kip koud licht gezond snel kaas"],
+ ["Salade met geitenkaas","🍯","Warme geitenkaas, honing en walnoten.","vega koud licht kaas ?luxe snel"],
+ ["Buddha bowl","🥑","Granen, geroosterde groenten en tahin.","vega vegan gezond licht ?koud ?rijst"],
+ ["Wraps met kip","🌯","Kip, paprika, sla en een sausje.","kip brood snel ?mexicaans ?gezond"],
+ ["Tomatensoep met tosti","🍅","Warme soep en een tosti om te dippen.","soep brood vega snel licht goedkoop kaas"],
+ ["Pompoensoep","🎃","Fluweelzacht, met een draai peper.","soep vega vegan gezond licht goedkoop"],
+ ["Omelet met groenten","🥚","Paar eieren, wat er nog in de koelkast ligt.","vega snel goedkoop licht ?kaas eenpan ?gezond"]
+];
+
+const DISHES = RAW.map(([name,emoji,desc,tags])=>{
+  const v={};
+  tags.split(" ").forEach(t=>{ if(t.startsWith("?")) v[t.slice(1)]=0.5; else v[t]=1; });
+  if(!("vega" in v)){
+    v.vega = MEATS.some(m=>v[m]===1) ? 0 : 0.5;
+  }
+  if(!("vegan" in v)) v.vegan = v.vega===1 ? (v.kaas?0:0.3) : 0;
+  return {name,emoji,desc,v};
+});
+
+const ANSWERS=[
+  {label:"Ja",val:1,cls:"a-yes"},
+  {label:"Een beetje",val:0.75},
+  {label:"Maakt niet uit",val:null},
+  {label:"Liever niet",val:0.25},
+  {label:"Nee",val:0,cls:"a-no"}
+];
+
+// ---------- Context: dag en tijd ----------
+const now=new Date(), day=now.getDay(), hour=now.getHours();
+const CONTEXT=[];
+if(day===5||day===6) CONTEXT.push({fx:{bestellen:.5,luxe:.4,comfort:.3,delen:.3},say:"Het is weekend, dus ik denk mee in iets lekkers."});
+else if(day===1) CONTEXT.push({fx:{gezond:.4,goedkoop:.3},say:"Maandag. Veel mensen willen dan een frisse start."});
+if(hour>=20) CONTEXT.push({fx:{snel:.6,bestellen:.4,stoof:-.8,oven:-.3},say:"Het is al laat, dus ik hou het snel."});
+
+// ---------- Staat ----------
+// events: {t:'q', key, val, mood?} of {t:'reject', i, reason}
+let events=[];
+let moodQueue=[];
+
+const panel=document.getElementById("panel");
+const geest=document.getElementById("geest");
+const mouth=document.getElementById("mouth");
+const restartBtn=document.getElementById("restart");
+
+const val=(d,k)=>d.v[k] ?? 0;
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+
+function applyFx(p,fx,strength){
+  DISHES.forEach((d,i)=>{
+    if(!p[i]) return;
+    let s=0; for(const k in fx) s+=fx[k]*val(d,k);
+    p[i]*=Math.exp(s*strength);
+  });
+}
+
+function probs(){
+  const p=DISHES.map(()=>1);
+  CONTEXT.forEach(c=>applyFx(p,c.fx,0.5));
+  for(const e of events){
+    if(e.t==="reject"){
+      p[e.i]=0;
+      const d=DISHES[e.i];
+      if(e.reason==="zwaar") applyFx(p,{comfort:-1,licht:1,kaas:-.4},0.9);
+      if(e.reason==="werk") applyFx(p,{snel:1,eenpan:.6,bestellen:.6,stoof:-1,oven:-.4},0.9);
+      if(e.reason==="smaak"){
+        const fx={}; CUISINES.forEach(c=>{if(val(d,c)) fx[c]=-1.4;});
+        MEATS.forEach(m=>{if(val(d,m)===1) fx[m]=-.8;});
+        ["rijst","pasta","noodles","aardappel","soep"].forEach(b=>{if(val(d,b)===1) fx[b]=(fx[b]||0)-.6;});
+        applyFx(p,fx,1);
+      }
+      continue;
+    }
+    if(e.val===null) continue;
+    if(e.mood){
+      const a=(e.val-0.5)*2;
+      applyFx(p,MOOD[e.key].fx,a>0?a*0.9:a*0.35);
+      continue;
+    }
+    if(QUESTIONS[e.key].soft && e.val<0.5) continue;
+    DISHES.forEach((d,i)=>{
+      if(!p[i]) return;
+      p[i]*=Math.max(0.07,1-Math.abs(e.val-val(d,e.key))*0.93);
+    });
+  }
+  const s=p.reduce((x,y)=>x+y,0)||1;
+  return p.map(x=>x/s);
+}
+
+function bestQuestion(p){
+  const asked=new Set(events.filter(e=>e.t==="q"&&!e.mood).map(e=>e.key));
+  let best=null,bestScore=0.015;
+  for(const k in QUESTIONS){
+    if(asked.has(k)) continue;
+    let yes=0; DISHES.forEach((d,i)=>yes+=p[i]*val(d,k));
+    const score=yes*(1-yes);
+    if(score>bestScore){bestScore=score;best=k;}
+  }
+  return best;
+}
+
+const ranked=p=>DISHES.map((d,i)=>({d,i,p:p[i]})).filter(x=>x.p>0).sort((a,b)=>b.p-a.p);
+const qCount=()=>events.filter(e=>e.t==="q").length;
+function sinceGuess(){
+  let n=0; for(let j=events.length-1;j>=0;j--){ if(events[j].t==="reject") break; if(!events[j].mood) n++; } return n;
+}
+const rejections=()=>events.filter(e=>e.t==="reject").length;
+
+function face(mode){
+  geest.classList.toggle("thinking",mode==="think");
+  mouth.setAttribute("d", mode==="happy" ? "M84 132q16 16 32 0" : mode==="sad" ? "M88 142q12-9 24 0" : mode==="sly" ? "M88 138q14 4 24-6" : "M88 136q12 8 24 0");
+}
+
+function remark(conf){
+  const last=events[events.length-1];
+  if(!last) return CONTEXT.length ? CONTEXT.map(c=>c.say).join(" ") : "Laten we beginnen met jou, niet met eten.";
+  if(last.t==="reject"){
+    return {zwaar:"Iets lichters dus. Ik stuur bij.",werk:"Minder gedoe. Begrepen.",smaak:"Een heel andere kant op dan.",gehad:"Snap ik. Afwisseling is fijn."}[last.reason];
+  }
+  if(last.mood && last.val!==null) return last.val>=0.5 ? MOOD[last.key].yes : MOOD[last.key].no;
+  if(conf>0.5) return rnd(["Ik weet het bijna zeker.","Ik ruik het al.","Nog heel even."]);
+  if(conf>0.3) return rnd(["Ik heb een vermoeden…","Het wordt warmer.","Interessant, dit zegt me veel."]);
+  return rnd(["Hmm.","Genoteerd.","Oké, ik denk na.","Dat helpt."]);
+}
+
+function step(){
+  const p=probs(), r=ranked(p);
+  if(!r.length) return noMore();
+  const top=r[0];
+  // eerst over jou (priming), daarna over eten
+  if(moodQueue.length && !events.some(e=>e.t==="reject")){
+    const moodAsked=events.filter(e=>e.mood).length;
+    if(moodAsked<moodQueue.length && (moodAsked<2 || qCount()===6)) return ask(moodQueue[moodAsked],true,top.p);
+  }
+  const q=bestQuestion(p), n=sinceGuess();
+  const ready=(n>=4 && top.p>0.45) || n>=(rejections()?5:15) || !q;
+  if(ready) return showGuess(top,r);
+  ask(q,false,top.p);
+}
+
+function ask(key,mood,conf){
+  face(mood?"sly":"think");
+  const n=qCount();
+  restartBtn.hidden=n===0;
+  const text=mood?MOOD[key].q:QUESTIONS[key].q;
+  const labels=mood?["Ja","Een beetje","Weet ik niet","Niet echt","Nee"]:ANSWERS.map(a=>a.label);
+  panel.innerHTML=`
+    <p class="remark">${remark(conf)}</p>
+    <p class="count">Vraag ${n+1}</p>
+    <p class="q">${text}</p>
+    <div class="answers">${ANSWERS.map((a,i)=>`<button data-i="${i}" class="${a.cls||""}">${labels[i]}</button>`).join("")}</div>
+    <div class="meter"><span>Zekerheid</span><div class="bar"><div class="fill" style="width:${Math.round(Math.min(1,conf*1.6)*100)}%"></div></div>
+    ${n?'<button class="link" id="back">Terug</button>':''}</div>`;
+  panel.querySelectorAll(".answers button").forEach(b=>b.onclick=()=>{
+    events.push({t:"q",key,val:ANSWERS[b.dataset.i].val,mood});
+    step();
+  });
+  const back=document.getElementById("back");
+  if(back) back.onclick=()=>{
+    // spring terug naar de vorige vraag (een afgewezen gok ook terugdraaien)
+    while(events.length && events[events.length-1].t!=="q") events.pop();
+    events.pop(); step();
+  };
+  panel.querySelector(".answers button").focus({preventScroll:true});
+}
+
+function showGuess(top,r){
+  face("happy");
+  restartBtn.hidden=false;
+  const alts=r.slice(1,4).filter(x=>x.p>0.03);
+  panel.innerHTML=`
+    <div class="guess">
+      <p class="count">Ik denk dat je zin hebt in…</p>
+      <div class="emoji">${top.d.emoji}</div>
+      <h2>${top.d.name}</h2>
+      <p>${top.d.desc}</p>
+      <p class="gut">Let op je eerste gevoel nu. Opluchting of teleurstelling? Dat is je echte antwoord.</p>
+      <div class="row">
+        <button class="btn primary" id="yes">Ja, dat wordt het</button>
+        <button class="btn" id="no">Nee, iets anders</button>
+      </div>
+      ${alts.length?`<div class="alts"><h3>Ook een optie</h3><ul>${alts.map(a=>`<li><button class="alt" data-i="${a.i}"><span>${a.d.emoji}</span><span>${a.d.name}</span></button></li>`).join("")}</ul></div>`:""}
+    </div>`;
+  document.getElementById("yes").onclick=()=>done(top.d);
+  document.getElementById("no").onclick=()=>whyNot(top);
+  panel.querySelectorAll(".alt").forEach(b=>b.onclick=()=>done(DISHES[b.dataset.i]));
+  document.getElementById("yes").focus({preventScroll:true});
+}
+
+function whyNot(top){
+  face("think");
+  const opts=[["zwaar","Te zwaar"],["werk","Te veel werk"],["smaak","Heel andere smaak"],["gehad","Had ik laatst nog"]];
+  panel.innerHTML=`
+    <p class="remark">Geen ${top.d.name.toLowerCase()} dus.</p>
+    <p class="q">Wat zat je niet lekker?</p>
+    <div class="answers">${opts.map(([k,l])=>`<button data-k="${k}">${l}</button>`).join("")}</div>`;
+  panel.querySelectorAll(".answers button").forEach(b=>b.onclick=()=>{
+    events.push({t:"reject",i:top.i,reason:b.dataset.k}); step();
+  });
+  panel.querySelector(".answers button").focus({preventScroll:true});
+}
+
+function done(d){
+  face("happy");
+  panel.innerHTML=`
+    <div class="guess">
+      <div class="emoji">${d.emoji}</div>
+      <h2>Eet smakelijk!</h2>
+      <p>${d.name} dus. Geraden in ${qCount()} vragen.</p>
+      <div class="row"><button class="btn primary" id="again">Nog een keer</button></div>
+    </div>`;
+  document.getElementById("again").onclick=reset;
+}
+
+function noMore(){
+  face("sad");
+  panel.innerHTML=`
+    <div class="guess">
+      <div class="emoji">🤷</div>
+      <h2>Ik ben door mijn recepten heen</h2>
+      <p>Je hebt alles afgewezen. Tijd voor een boterham, of begin opnieuw en antwoord wat ruimer.</p>
+      <div class="row"><button class="btn primary" id="again">Opnieuw beginnen</button></div>
+    </div>`;
+  document.getElementById("again").onclick=reset;
+}
+
+function intro(){
+  face("idle");
+  restartBtn.hidden=true;
+  panel.innerHTML=`
+    <div class="intro">
+      <p class="q">Geen idee wat je vanavond eet?</p>
+      <p>Ik ken ${DISHES.length} gerechten. Eerst een paar vragen over jou, daarna over eten. Antwoord op gevoel, niet op wat je hoort te willen.</p>
+      <div class="row"><button class="btn primary" id="start">Begin</button></div>
+    </div>`;
+  document.getElementById("start").onclick=step;
+}
+
+function reset(){
+  events=[];
+  const keys=Object.keys(MOOD).sort(()=>Math.random()-.5);
+  // koude-weervraag heeft weinig zin in de zomer
+  const m=now.getMonth();
+  moodQueue=keys.filter(k=>!(k==="weer"&&m>=5&&m<=7)).slice(0,3);
+  intro();
+}
+restartBtn.onclick=reset;
+reset();
+</script>
+</body>
+</html>
