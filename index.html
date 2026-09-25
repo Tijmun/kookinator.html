@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>De Kookinator – wat eet ik vanavond?</title>
+<meta name="description" content="Geen idee wat je vanavond eet? De Kookinator stelt een paar vragen en raadt het.">
+<meta property="og:title" content="De Kookinator">
+<meta property="og:description" content="Geen idee wat je vanavond eet? Beantwoord een paar vragen en ik raad het.">
+<meta name="theme-color" content="#F5C542">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍲</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
@@ -76,13 +81,26 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .remark{font-style:italic;color:var(--soft);margin:0 0 10px;min-height:1.5em}
 .gut{font-size:.92rem;font-style:italic;border-left:3px solid var(--ink);text-align:left;padding-left:10px;max-width:36ch}
 .alt{font:inherit;background:none;border:0;color:var(--ink);display:flex;gap:10px;align-items:center;padding:4px 0;cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--ink) 35%,transparent)}
+.copy{text-align:center;font-size:.8rem;color:var(--soft);margin:6px 0 0;opacity:.85}
+.row a.btn{text-decoration:none;display:inline-block}
+.tools{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.field{font:inherit;width:100%;padding:12px 14px;border:2.5px solid var(--line);border-radius:14px;background:transparent;color:var(--ink)}
+.field::placeholder{color:var(--soft);opacity:.8}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.stats div{border:2px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center}
+.stats b{display:block;font-family:"Young Serif",Georgia,serif;font-weight:400;font-size:1.5rem}
+.stats span{font-size:.8rem;color:var(--soft);line-height:1.2;display:block}
 </style>
 </head>
 <body>
 <main>
   <header>
     <h1>De Kookinator</h1>
-    <button class="link" id="restart" hidden>Opnieuw</button>
+    <nav class="tools">
+      <button class="link" id="restart" hidden>Opnieuw</button>
+      <button class="link" id="statsBtn">Statistieken</button>
+      <button class="link" id="langBtn">EN</button>
+    </nav>
   </header>
 
   <div class="stage">
@@ -106,64 +124,155 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 
     <section class="bubble" id="panel" aria-live="polite"></section>
   </div>
-  <p class="foot">Denk niet te lang na. Je buik weet het antwoord al.</p>
+  <p class="foot" id="foot">Denk niet te lang na. Je buik weet het antwoord al.</p>
+  <p class="copy" id="copy">© 2026 Tijmen. Alle rechten voorbehouden.</p>
 </main>
 
 <script>
+// ---------- Opslag (per browser) ----------
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+};
+let LANG=store.get("kookinator-lang",(navigator.language||"nl").toLowerCase().startsWith("nl")?"nl":"en");
+
+// ---------- Teksten ----------
+const T={
+ nl:{restart:"Opnieuw",stats:"Statistieken",langBtn:"EN",
+  foot:"Denk niet te lang na. Je buik weet het antwoord al.",copy:"© 2026 Tijmen. Alle rechten voorbehouden.",
+  introQ:"Geen idee wat je vanavond eet?",
+  intro:n=>`Ik ken ${n} gerechten. Eerst een paar vragen over jou, daarna over eten. Antwoord op gevoel, niet op wat je hoort te willen.`,
+  start:"Begin",question:n=>`Vraag ${n}`,sure:"Zekerheid",back:"Terug",
+  answers:["Ja","Een beetje","Maakt niet uit","Liever niet","Nee"],
+  moodAnswers:["Ja","Een beetje","Weet ik niet","Niet echt","Nee"],
+  think:"Ik denk dat je zin hebt in…",
+  gut:"Let op je eerste gevoel nu. Opluchting of teleurstelling? Dat is je echte antwoord.",
+  yes:"Ja, dat wordt het",no:"Nee, iets anders",alts:"Ook een optie",
+  notThis:n=>`Geen ${n.toLowerCase()} dus.`,whatWrong:"Wat zat je niet lekker?",
+  reasons:{zwaar:"Te zwaar",werk:"Te veel werk",smaak:"Heel andere smaak",gehad:"Had ik laatst nog"},
+  reasonSay:{zwaar:"Iets lichters dus. Ik stuur bij.",werk:"Minder gedoe. Begrepen.",smaak:"Een heel andere kant op dan.",gehad:"Snap ik. Afwisseling is fijn."},
+  iKnow:"Ik weet al wat ik wil",
+  teachQ:"Wat wordt het dan?",teachP:"Vertel het me, dan onthoud ik het voor de volgende keer. Ik gebruik je antwoorden van net om het te leren herkennen.",
+  teachPh:"Bijvoorbeeld: stamppot zuurkool",save:"Onthoud dit",cancel:"Annuleren",
+  learned:n=>`Genoteerd! Ik ken nu ${n.toLowerCase()}. Volgende keer raad ik het misschien zelf.`,
+  customDesc:"Door jou aan mij geleerd.",
+  enjoy:"Eet smakelijk!",guessedIn:(d,n)=>`${d} dus. Geraden in ${n} vragen.`,
+  recipe:"Zoek een recept",recipeQ:"recept",share:"Deel",copied:"Gekopieerd!",copyFail:"Kopiëren lukte niet",
+  shareText:(n,d,e)=>`De Kookinator raadde in ${n} vragen dat ik ${d.toLowerCase()} ga eten ${e} Kan hij jouw avondeten ook raden?`,
+  again:"Nog een keer",
+  noMoreH:"Ik ben door mijn recepten heen",noMoreP:"Je hebt alles afgewezen. Vertel me wat je wilt eten, dan leer ik het.",
+  teachBtn:"Leer het me",
+  statsH:"Jouw statistieken",statsNote:"Dit wordt alleen in jouw browser bewaard.",
+  sGames:"Potjes gespeeld",sFirst:"In één keer goed",sAvg:"Gemiddeld aantal vragen",sTop:"Vaakst gekozen",
+  sCustom:"Gerechten die je me leerde",sNone:"Nog niks.",sDel:"Verwijder",sReset:"Wis alles",sResetConfirm:"Weet je het zeker? Knop nog een keer indrukken.",
+  first:["Laten we beginnen met jou, niet met eten."],
+  high:["Ik weet het bijna zeker.","Ik ruik het al.","Nog heel even."],
+  mid:["Ik heb een vermoeden…","Het wordt warmer.","Interessant, dit zegt me veel."],
+  low:["Hmm.","Genoteerd.","Oké, ik denk na.","Dat helpt."],
+  ctxWeekend:"Het is weekend, dus ik denk mee in iets lekkers.",ctxMonday:"Maandag. Veel mensen willen dan een frisse start.",ctxLate:"Het is al laat, dus ik hou het snel."
+ },
+ en:{restart:"Restart",stats:"Stats",langBtn:"NL",
+  foot:"Don't overthink it. Your stomach already knows.",copy:"© 2026 Tijmen. All rights reserved.",
+  introQ:"No idea what to eat tonight?",
+  intro:n=>`I know ${n} dishes. First a few questions about you, then about food. Answer with your gut, not with what you think you should want.`,
+  start:"Start",question:n=>`Question ${n}`,sure:"Confidence",back:"Back",
+  answers:["Yes","A bit","Don't care","Rather not","No"],
+  moodAnswers:["Yes","A bit","Don't know","Not really","No"],
+  think:"I think you're in the mood for…",
+  gut:"Notice your first feeling right now. Relief or disappointment? That's your real answer.",
+  yes:"Yes, that's the one",no:"No, something else",alts:"Also an option",
+  notThis:n=>`No ${n.toLowerCase()} then.`,whatWrong:"What didn't feel right?",
+  reasons:{zwaar:"Too heavy",werk:"Too much work",smaak:"Totally different flavour",gehad:"Had it recently"},
+  reasonSay:{zwaar:"Something lighter then. Adjusting.",werk:"Less hassle. Got it.",smaak:"A completely different direction then.",gehad:"Fair. Variety is nice."},
+  iKnow:"I already know what I want",
+  teachQ:"What's it going to be?",teachP:"Tell me and I'll remember it for next time. I'll use your answers so far to learn to recognise it.",
+  teachPh:"For example: sauerkraut mash",save:"Remember this",cancel:"Cancel",
+  learned:n=>`Noted! I now know ${n.toLowerCase()}. Next time I might guess it myself.`,
+  customDesc:"You taught me this one.",
+  enjoy:"Enjoy your meal!",guessedIn:(d,n)=>`${d} it is. Guessed in ${n} questions.`,
+  recipe:"Find a recipe",recipeQ:"recipe",share:"Share",copied:"Copied!",copyFail:"Couldn't copy",
+  shareText:(n,d,e)=>`The Kookinator guessed in ${n} questions that I'm having ${d.toLowerCase()} ${e} Can it guess your dinner too?`,
+  again:"Play again",
+  noMoreH:"I've run out of recipes",noMoreP:"You rejected everything. Tell me what you want to eat and I'll learn it.",
+  teachBtn:"Teach me",
+  statsH:"Your stats",statsNote:"This is only stored in your own browser.",
+  sGames:"Games played",sFirst:"Right first time",sAvg:"Average questions",sTop:"Most chosen",
+  sCustom:"Dishes you taught me",sNone:"Nothing yet.",sDel:"Remove",sReset:"Clear everything",sResetConfirm:"Are you sure? Press again.",
+  first:["Let's start with you, not with food."],
+  high:["I'm almost certain.","I can smell it already.","Nearly there."],
+  mid:["I have a hunch…","Getting warmer.","Interesting, that tells me a lot."],
+  low:["Hmm.","Noted.","Okay, thinking.","That helps."],
+  ctxWeekend:"It's the weekend, so I'm thinking of something nice.",ctxMonday:"Monday. Lots of people want a fresh start.",ctxLate:"It's getting late, so I'll keep it quick."
+ }
+};
+const t=k=>T[LANG][k];
+
 // ---------- Stemmingsvragen (psychologie) ----------
-// Deze vragen gaan over jou, niet over eten. Ze duwen zachtjes in een richting.
 const MOOD = {
-  dag:{q:"Was het een zware dag?",fx:{comfort:1,snel:.4,bestellen:.5,licht:-.5},yes:"Dan heb je iets goeds verdiend.",no:"Mooi, dan staat je hoofd open voor iets nieuws."},
-  moe:{q:"Ben je moe?",fx:{snel:1,eenpan:.7,bestellen:.6,stoof:-.8,oven:-.3},yes:"Dan gaan we niet uren in de keuken staan.",no:"Energie over, dat opent deuren."},
-  honger:{q:"Heb je honger als een paard?",fx:{licht:-1,comfort:.7,koud:-.6,delen:.3},yes:"Dat hoor ik aan je maag.",no:"Iets kleiners dus. Genoteerd."},
-  samen:{q:"Eet je vanavond met anderen?",fx:{delen:1,oven:.4,luxe:.3},yes:"Gezellig. Iets om samen van te eten dan.",no:"Alleen eten mag ook heerlijk zijn."},
-  weer:{q:"Is het koud of guur buiten?",fx:{soep:.8,stoof:1,comfort:.6,koud:-1,licht:-.3},yes:"Iets warms dus.",no:"Dan mag het ook fris zijn."},
-  vieren:{q:"Wil je jezelf vanavond verwennen?",fx:{luxe:1,bestellen:.5,goedkoop:-.7},yes:"Dat mag. Het leven is kort.",no:"Lekker hoeft niet duur te zijn."},
-  sport:{q:"Heb je vandaag gesport?",fx:{gezond:.6,kip:.5,rijst:.3,licht:-.3},yes:"Dan willen je spieren iets terug.",no:"Geen oordeel hier."}
+  dag:{fx:{comfort:1,snel:.4,bestellen:.5,licht:-.5},
+    nl:["Was het een zware dag?","Dan heb je iets goeds verdiend.","Mooi, dan staat je hoofd open voor iets nieuws."],
+    en:["Was it a tough day?","Then you've earned something good.","Nice, then you're open to something new."]},
+  moe:{fx:{snel:1,eenpan:.7,bestellen:.6,stoof:-.8,oven:-.3},
+    nl:["Ben je moe?","Dan gaan we niet uren in de keuken staan.","Energie over, dat opent deuren."],
+    en:["Are you tired?","Then we won't spend hours in the kitchen.","Energy to spare, that opens doors."]},
+  honger:{fx:{licht:-1,comfort:.7,koud:-.6,delen:.3},
+    nl:["Heb je honger als een paard?","Dat hoor ik aan je maag.","Iets kleiners dus. Genoteerd."],
+    en:["Are you starving?","I can hear your stomach from here.","Something smaller then. Noted."]},
+  samen:{fx:{delen:1,oven:.4,luxe:.3},
+    nl:["Eet je vanavond met anderen?","Gezellig. Iets om samen van te eten dan.","Alleen eten mag ook heerlijk zijn."],
+    en:["Are you eating with others tonight?","Nice. Something to share then.","Eating alone can be lovely too."]},
+  weer:{fx:{soep:.8,stoof:1,comfort:.6,koud:-1,licht:-.3},
+    nl:["Is het koud of guur buiten?","Iets warms dus.","Dan mag het ook fris zijn."],
+    en:["Is it cold or grim outside?","Something warm then.","Then it can be fresh too."]},
+  vieren:{fx:{luxe:1,bestellen:.5,goedkoop:-.7},
+    nl:["Wil je jezelf vanavond verwennen?","Dat mag. Het leven is kort.","Lekker hoeft niet duur te zijn."],
+    en:["Do you want to treat yourself tonight?","Go for it. Life is short.","Tasty doesn't have to be expensive."]},
+  sport:{fx:{gezond:.6,kip:.5,rijst:.3,licht:-.3},
+    nl:["Heb je vandaag gesport?","Dan willen je spieren iets terug.","Geen oordeel hier."],
+    en:["Did you work out today?","Then your muscles want something back.","No judgement here."]}
 };
 
 // ---------- Etenvragen ----------
-// soft: "nee" betekent "maakt niet uit"
 const QUESTIONS = {
-  kip:{q:"Heb je zin in kip?"},
-  rund:{q:"Heb je zin in rundvlees of gehakt?"},
-  varken:{q:"Mag er spek, ham of worst in?"},
-  vis:{q:"Heb je zin in vis of garnalen?"},
-  vega:{q:"Moet het vegetarisch zijn?",soft:true},
-  vegan:{q:"Moet het helemaal plantaardig zijn?",soft:true},
-  rijst:{q:"Heb je zin in rijst?"},
-  pasta:{q:"Heb je zin in pasta?"},
-  aardappel:{q:"Wil je aardappels of friet erbij?"},
-  noodles:{q:"Heb je zin in noodles?"},
-  brood:{q:"Heb je zin in iets met brood of wraps?"},
-  soep:{q:"Heb je zin in soep?"},
-  gezond:{q:"Wil je vooral gezond eten?",soft:true},
-  snel:{q:"Moet het binnen een halfuur op tafel staan?",soft:true},
-  goedkoop:{q:"Moet het goedkoop blijven?",soft:true},
-  eenpan:{q:"Wil je zo min mogelijk afwas?",soft:true},
-  bestellen:{q:"Wil je eigenlijk liever bestellen dan koken?"},
-  comfort:{q:"Heb je zin in echt troostvoer?"},
-  licht:{q:"Wil je iets lichts eten?"},
-  koud:{q:"Heb je meer zin in iets fris, zoals een salade?"},
-  pittig:{q:"Mag het pittig zijn?"},
-  kaas:{q:"Moet er kaas in of op?"},
-  oven:{q:"Heb je zin in iets uit de oven?"},
-  stoof:{q:"Heb je zin in iets dat lang heeft gestoofd?"},
-  delen:{q:"Zie je jezelf graag van schalen pakken en delen?"},
-  luxe:{q:"Mag het een beetje feestelijk zijn?"},
-  aziatisch:{q:"Denk je aan de Aziatische keuken?"},
-  italiaans:{q:"Denk je aan de Italiaanse keuken?"},
-  mexicaans:{q:"Denk je aan iets Mexicaans?"},
-  hollands:{q:"Heb je zin in iets ouderwets Hollands?"},
-  oosters:{q:"Denk je aan iets uit het Midden-Oosten of Noord-Afrika?"},
-  med:{q:"Denk je aan iets Grieks of Spaans?"},
-  indiaas:{q:"Denk je aan de Indiase keuken?"}
+  kip:["Heb je zin in kip?","Do you fancy chicken?"],
+  rund:["Heb je zin in rundvlees of gehakt?","Do you fancy beef or mince?"],
+  varken:["Mag er spek, ham of worst in?","Can there be bacon, ham or sausage in it?"],
+  vis:["Heb je zin in vis of garnalen?","Do you fancy fish or prawns?"],
+  vega:["Moet het vegetarisch zijn?","Does it need to be vegetarian?",1],
+  vegan:["Moet het helemaal plantaardig zijn?","Does it need to be fully plant-based?",1],
+  rijst:["Heb je zin in rijst?","Do you fancy rice?"],
+  pasta:["Heb je zin in pasta?","Do you fancy pasta?"],
+  aardappel:["Wil je aardappels of friet erbij?","Do you want potatoes or fries with it?"],
+  noodles:["Heb je zin in noodles?","Do you fancy noodles?"],
+  brood:["Heb je zin in iets met brood of wraps?","Do you fancy something with bread or wraps?"],
+  soep:["Heb je zin in soep?","Do you fancy soup?"],
+  gezond:["Wil je vooral gezond eten?","Do you mainly want to eat healthy?",1],
+  snel:["Moet het binnen een halfuur op tafel staan?","Does it need to be ready within half an hour?",1],
+  goedkoop:["Moet het goedkoop blijven?","Does it need to be cheap?",1],
+  eenpan:["Wil je zo min mogelijk afwas?","Do you want as little washing-up as possible?",1],
+  bestellen:["Wil je eigenlijk liever bestellen dan koken?","Would you rather order than cook?"],
+  comfort:["Heb je zin in echt troostvoer?","Do you want proper comfort food?"],
+  licht:["Wil je iets lichts eten?","Do you want something light?"],
+  koud:["Heb je meer zin in iets fris, zoals een salade?","Do you fancy something fresh, like a salad?"],
+  pittig:["Mag het pittig zijn?","Can it be spicy?"],
+  kaas:["Moet er kaas in of op?","Should there be cheese in or on it?"],
+  oven:["Heb je zin in iets uit de oven?","Do you fancy something from the oven?"],
+  stoof:["Heb je zin in iets dat lang heeft gestoofd?","Do you fancy something slow-cooked?"],
+  delen:["Zie je jezelf graag van schalen pakken en delen?","Do you picture yourself sharing from big dishes?"],
+  luxe:["Mag het een beetje feestelijk zijn?","Can it be a bit festive?"],
+  aziatisch:["Denk je aan de Aziatische keuken?","Are you thinking of Asian food?"],
+  italiaans:["Denk je aan de Italiaanse keuken?","Are you thinking of Italian food?"],
+  mexicaans:["Denk je aan iets Mexicaans?","Are you thinking of something Mexican?"],
+  hollands:["Heb je zin in iets ouderwets Hollands?","Do you fancy something traditionally Dutch?"],
+  oosters:["Denk je aan iets uit het Midden-Oosten of Noord-Afrika?","Are you thinking of Middle Eastern or North African food?"],
+  med:["Denk je aan iets Grieks of Spaans?","Are you thinking of something Greek or Spanish?"],
+  indiaas:["Denk je aan de Indiase keuken?","Are you thinking of Indian food?"]
 };
+const isSoft=k=>!!QUESTIONS[k][2];
+const qText=k=>QUESTIONS[k][LANG==="en"?1:0];
 const CUISINES=["aziatisch","italiaans","mexicaans","hollands","oosters","med","indiaas"];
 const MEATS=["kip","rund","varken","vis"];
 
-// ---------- Gerechten ----------
-// tag = ja, ?tag = misschien, niet genoemd = nee
 const RAW = [
  // Aziatisch
  ["Kip teriyaki met rijst","🍗","Kleverige, zoete kip met rijst en broccoli.","kip rijst aziatisch snel ?gezond eenpan"],
@@ -274,44 +383,148 @@ const RAW = [
  ["Pompoensoep","🎃","Fluweelzacht, met een draai peper.","soep vega vegan gezond licht goedkoop"],
  ["Omelet met groenten","🥚","Paar eieren, wat er nog in de koelkast ligt.","vega snel goedkoop licht ?kaas eenpan ?gezond"]
 ];
+const EN=`Chicken teriyaki with rice|Sticky, sweet chicken with rice and broccoli.
+Salmon teriyaki|Glossy salmon, rice and sesame.
+Nasi goreng|Fried rice with an egg on top. Great for leftovers.
+Bami goreng|Fried noodles with veg and chicken or pork.
+Pad thai|Rice noodles with egg, bean sprouts, peanut and lime.
+Udon stir-fry|Thick noodles, veg and a quick sauce.
+Thai green curry|Coconut milk, green curry, chicken and jasmine rice.
+Chicken satay with rice|Chicken thighs with peanut sauce, pickles and prawn crackers.
+Chicken ketjap|Sweet soy chicken with rice and green beans.
+Rendang|Beef slow-cooked for hours in coconut and spices.
+Rice table|A table full of small dishes to share.
+Babi pangang|Crispy pork in red sauce, from the Chinese takeaway.
+Chinese takeaway|Foo young hai, chop suey and a box of fried rice.
+Katsu curry|Breaded chicken with mild Japanese curry.
+Bibimbap|Rice, veg, fried egg and gochujang.
+Dumplings|Gyoza or dim sum to dip.
+Poké bowl|Rice with salmon or tuna, avocado and edamame.
+Sushi|Let someone else do the rolling.
+Ramen|Rich broth, noodles, egg and a slice of pork.
+Pho|Clear broth with rice noodles and fresh herbs.
+Tom kha kai|Sour, creamy coconut soup with chicken.
+Tofu stir-fry|Crunchy veg, tofu and soy sauce.
+Chicken tikka masala|Creamy tomato curry with chicken, rice and naan.
+Butter chicken|Mild, buttery and creamy.
+Biryani|Fragrant spiced rice with chicken.
+Chana masala|Chickpeas in a spicy tomato sauce.
+Lentil dal|Creamy lentils with turmeric, rice or naan.
+Saag paneer|Spinach with cubes of Indian cheese.
+Spaghetti bolognese|Mince, tomato and a long simmer.
+Lasagne|Layers of pasta, ragù and béchamel from the oven.
+Vegetable lasagne|Lasagne with courgette, spinach and ricotta.
+Pasta pesto|Pasta, pesto, cherry tomatoes and pine nuts.
+Pasta carbonara|Bacon, egg, pecorino and lots of pepper.
+Penne arrabbiata|Tomato, garlic and plenty of chili.
+Aglio e olio|Spaghetti with garlic, oil and parsley.
+Prawn pasta|Prawns, lemon, garlic and a splash of cream.
+Baked gnocchi|Gnocchi in tomato sauce with melted mozzarella.
+Fresh ravioli|From the fridge, with sage and butter.
+Pizza|Order it or top it yourself. Both good.
+Mushroom risotto|Creamy, slow stirring, lots of parmesan.
+Meatballs in tomato sauce|With bread to mop up the sauce.
+Tacos|Soft tortillas with mince, salsa and lime.
+Fish tacos|Crispy fish, slaw and lime mayo.
+Fajitas|Sizzling chicken and peppers, fill your own wraps.
+Burrito bowl|Rice, beans, corn, chicken and guacamole.
+Quesadilla|Tortilla with melted cheese, quick from the pan.
+Oven nachos|A tray of chips, cheese and salsa.
+Enchiladas|Filled tortillas with sauce and cheese from the oven.
+Chili con carne|Mince, beans and spices. Let it sit.
+Chili sin carne|Beans, tomato and spices. Even better on day two.
+Kale mash with smoked sausage|Dutch stamppot with gravy and a thick smoked sausage.
+Endive mash with bacon|Raw endive through the mash, bacon on top.
+Sauerkraut with sausage|Sour and salty, just what a winter night needs.
+Hutspot with beef|Carrot, onion and potato. Grandpa would be proud.
+Hachee with red cabbage|Onion and beef, stewed for hours.
+Flemish beef stew with fries|Beef stewed in beer, with mayo.
+Potatoes, veg and meat|A schnitzel or meat roll with green beans.
+Cordon bleu with fries|Breaded, with ham and cheese inside.
+Dutch chicken curry|Mild curry sauce with rice. Childhood nostalgia.
+Pancakes|Bacon, cheese, apple or syrup. Everyone happy.
+Uitsmijter|Bread, ham, cheese and three fried eggs.
+Pea soup|Thick split pea soup with rye bread and bacon.
+Chicken soup|Clear broth with meatballs. Good for body and soul.
+Fries with a snack|A frikandel or croquette from the snack bar.
+Kapsalon|Fries, shawarma, cheese and salad in one box.
+Kibbeling with fries|Fried fish, remoulade and fries.
+Cod with mash|Pan-fried fish, butter and spinach.
+Mussels with fries|A pot of mussels, white wine and bread.
+Shawarma|Pita with shawarma, garlic sauce and salad.
+Falafel with hummus|Falafel, hummus, salad and warm pita.
+Shakshuka|Eggs in spicy tomato sauce, with bread.
+Chicken tagine|Chicken with lemon, olives and spices, slow-cooked.
+Kofta with bulgur|Spiced meat skewers with yoghurt sauce.
+Couscous with roasted veg|Chickpeas, veg and harissa.
+Greek salad|Tomato, cucumber, olives and feta.
+Gyros with tzatziki|Pork gyros, fries and lots of garlic.
+Moussaka|Aubergine, mince and béchamel from the oven.
+Paella|Saffron rice with seafood from one big pan.
+Gambas al ajillo|Prawns in garlic oil with baguette.
+Chicken traybake|Chicken thighs, potato and veg on one tray.
+Chicken legs with fries|Crispy oven chicken. Eat with your hands.
+Piri piri chicken|Spicy marinated chicken with potatoes.
+Oven-baked salmon|Salmon, lemon and veg on one tray.
+Steak and fries|Steak, béarnaise and fries. Because you can.
+Spare ribs|Sticky, sweet and eaten with your hands.
+Pulled pork buns|Slow-cooked pork with coleslaw.
+Burgers|Juicy burger, bun, cheese and pickle.
+Hot dogs|Sausage, bun, onions. Done.
+Cheese fondue|A pot of melted cheese and a mountain of bread.
+Quiche|Savoury tart with egg, cheese and veg.
+Sweet potato bake|Sweet potato, spinach and feta from the oven.
+Mac and cheese|Pasta in a bath of cheese sauce, crispy top.
+Macaroni with ham and cheese|Weeknight comfort food.
+Chicken Caesar salad|Crisp lettuce, chicken, croutons and parmesan.
+Goat cheese salad|Warm goat cheese, honey and walnuts.
+Buddha bowl|Grains, roasted veg and tahini.
+Chicken wraps|Chicken, peppers, lettuce and a sauce.
+Tomato soup with toastie|Warm soup and a toastie for dipping.
+Pumpkin soup|Velvety, with a twist of pepper.
+Veggie omelette|A few eggs, whatever's left in the fridge.`.split("\n").map(l=>l.split("|"));
 
-const DISHES = RAW.map(([name,emoji,desc,tags])=>{
+
+// ---------- Gerechten opbouwen ----------
+function parseTags(tags){
   const v={};
-  tags.split(" ").forEach(t=>{ if(t.startsWith("?")) v[t.slice(1)]=0.5; else v[t]=1; });
-  if(!("vega" in v)){
-    v.vega = MEATS.some(m=>v[m]===1) ? 0 : 0.5;
-  }
+  tags.split(" ").forEach(x=>{ if(x.startsWith("?")) v[x.slice(1)]=0.5; else v[x]=1; });
+  if(!("vega" in v)) v.vega = MEATS.some(m=>v[m]===1) ? 0 : 0.5;
   if(!("vegan" in v)) v.vegan = v.vega===1 ? (v.kaas?0:0.3) : 0;
-  return {name,emoji,desc,v};
-});
-
-const ANSWERS=[
-  {label:"Ja",val:1,cls:"a-yes"},
-  {label:"Een beetje",val:0.75},
-  {label:"Maakt niet uit",val:null},
-  {label:"Liever niet",val:0.25},
-  {label:"Nee",val:0,cls:"a-no"}
-];
+  return v;
+}
+let DISHES=[];
+function buildDishes(){
+  const base=RAW.map(([name,emoji,desc,tags],i)=>({key:name,nl:[name,desc],en:EN[i],emoji,v:parseTags(tags)}));
+  const custom=store.get("kookinator-custom",[]).map(c=>({key:c.name,nl:[c.name,null],en:[c.name,null],emoji:"🍽️",v:c.v,custom:true}));
+  DISHES=base.concat(custom);
+}
+const dName=d=>d[LANG][0];
+const dDesc=d=>d[LANG][1]||t("customDesc");
+buildDishes();
 
 // ---------- Context: dag en tijd ----------
 const now=new Date(), day=now.getDay(), hour=now.getHours();
 const CONTEXT=[];
-if(day===5||day===6) CONTEXT.push({fx:{bestellen:.5,luxe:.4,comfort:.3,delen:.3},say:"Het is weekend, dus ik denk mee in iets lekkers."});
-else if(day===1) CONTEXT.push({fx:{gezond:.4,goedkoop:.3},say:"Maandag. Veel mensen willen dan een frisse start."});
-if(hour>=20) CONTEXT.push({fx:{snel:.6,bestellen:.4,stoof:-.8,oven:-.3},say:"Het is al laat, dus ik hou het snel."});
+if(day===5||day===6) CONTEXT.push({fx:{bestellen:.5,luxe:.4,comfort:.3,delen:.3},say:"ctxWeekend"});
+else if(day===1) CONTEXT.push({fx:{gezond:.4,goedkoop:.3},say:"ctxMonday"});
+if(hour>=20) CONTEXT.push({fx:{snel:.6,bestellen:.4,stoof:-.8,oven:-.3},say:"ctxLate"});
 
 // ---------- Staat ----------
-// events: {t:'q', key, val, mood?} of {t:'reject', i, reason}
-let events=[];
-let moodQueue=[];
+let events=[], moodQueue=[], redraw=()=>{};
+const ANSVAL=[1,0.75,null,0.25,0];
+const ANSCLS=["a-yes","","","","a-no"];
 
 const panel=document.getElementById("panel");
 const geest=document.getElementById("geest");
 const mouth=document.getElementById("mouth");
 const restartBtn=document.getElementById("restart");
+const statsBtn=document.getElementById("statsBtn");
+const langBtn=document.getElementById("langBtn");
 
 const val=(d,k)=>d.v[k] ?? 0;
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function applyFx(p,fx,strength){
   DISHES.forEach((d,i)=>{
@@ -344,7 +557,7 @@ function probs(){
       applyFx(p,MOOD[e.key].fx,a>0?a*0.9:a*0.35);
       continue;
     }
-    if(QUESTIONS[e.key].soft && e.val<0.5) continue;
+    if(isSoft(e.key) && e.val<0.5) continue;
     DISHES.forEach((d,i)=>{
       if(!p[i]) return;
       p[i]*=Math.max(0.07,1-Math.abs(e.val-val(d,e.key))*0.93);
@@ -368,9 +581,7 @@ function bestQuestion(p){
 
 const ranked=p=>DISHES.map((d,i)=>({d,i,p:p[i]})).filter(x=>x.p>0).sort((a,b)=>b.p-a.p);
 const qCount=()=>events.filter(e=>e.t==="q").length;
-function sinceGuess(){
-  let n=0; for(let j=events.length-1;j>=0;j--){ if(events[j].t==="reject") break; if(!events[j].mood) n++; } return n;
-}
+function sinceGuess(){ let n=0; for(let j=events.length-1;j>=0;j--){ if(events[j].t==="reject") break; if(!events[j].mood) n++; } return n; }
 const rejections=()=>events.filter(e=>e.t==="reject").length;
 
 function face(mode){
@@ -380,22 +591,29 @@ function face(mode){
 
 function remark(conf){
   const last=events[events.length-1];
-  if(!last) return CONTEXT.length ? CONTEXT.map(c=>c.say).join(" ") : "Laten we beginnen met jou, niet met eten.";
-  if(last.t==="reject"){
-    return {zwaar:"Iets lichters dus. Ik stuur bij.",werk:"Minder gedoe. Begrepen.",smaak:"Een heel andere kant op dan.",gehad:"Snap ik. Afwisseling is fijn."}[last.reason];
-  }
-  if(last.mood && last.val!==null) return last.val>=0.5 ? MOOD[last.key].yes : MOOD[last.key].no;
-  if(conf>0.5) return rnd(["Ik weet het bijna zeker.","Ik ruik het al.","Nog heel even."]);
-  if(conf>0.3) return rnd(["Ik heb een vermoeden…","Het wordt warmer.","Interessant, dit zegt me veel."]);
-  return rnd(["Hmm.","Genoteerd.","Oké, ik denk na.","Dat helpt."]);
+  if(!last) return CONTEXT.length ? CONTEXT.map(c=>t(c.say)).join(" ") : t("first")[0];
+  if(last.t==="reject") return t("reasonSay")[last.reason];
+  if(last.mood && last.val!==null) return MOOD[last.key][LANG][last.val>=0.5?1:2];
+  if(conf>0.5) return rnd(t("high"));
+  if(conf>0.3) return rnd(t("mid"));
+  return rnd(t("low"));
 }
 
+// ---------- Statistieken ----------
+function loadStats(){ return store.get("kookinator-stats",{games:0,first:0,questions:0,dishes:{}}); }
+function record(d,firstTry){
+  const s=loadStats();
+  s.games++; if(firstTry) s.first++; s.questions+=qCount();
+  s.dishes[d.key]=(s.dishes[d.key]||0)+1;
+  store.set("kookinator-stats",s);
+}
+
+// ---------- Schermen ----------
 function step(){
   const p=probs(), r=ranked(p);
   if(!r.length) return noMore();
   const top=r[0];
-  // eerst over jou (priming), daarna over eten
-  if(moodQueue.length && !events.some(e=>e.t==="reject")){
+  if(moodQueue.length && !rejections()){
     const moodAsked=events.filter(e=>e.mood).length;
     if(moodAsked<moodQueue.length && (moodAsked<2 || qCount()===6)) return ask(moodQueue[moodAsked],true,top.p);
   }
@@ -406,112 +624,252 @@ function step(){
 }
 
 function ask(key,mood,conf){
-  face(mood?"sly":"think");
-  const n=qCount();
-  restartBtn.hidden=n===0;
-  const text=mood?MOOD[key].q:QUESTIONS[key].q;
-  const labels=mood?["Ja","Een beetje","Weet ik niet","Niet echt","Nee"]:ANSWERS.map(a=>a.label);
-  panel.innerHTML=`
-    <p class="remark">${remark(conf)}</p>
-    <p class="count">Vraag ${n+1}</p>
-    <p class="q">${text}</p>
-    <div class="answers">${ANSWERS.map((a,i)=>`<button data-i="${i}" class="${a.cls||""}">${labels[i]}</button>`).join("")}</div>
-    <div class="meter"><span>Zekerheid</span><div class="bar"><div class="fill" style="width:${Math.round(Math.min(1,conf*1.6)*100)}%"></div></div>
-    ${n?'<button class="link" id="back">Terug</button>':''}</div>`;
-  panel.querySelectorAll(".answers button").forEach(b=>b.onclick=()=>{
-    events.push({t:"q",key,val:ANSWERS[b.dataset.i].val,mood});
-    step();
-  });
-  const back=document.getElementById("back");
-  if(back) back.onclick=()=>{
-    // spring terug naar de vorige vraag (een afgewezen gok ook terugdraaien)
-    while(events.length && events[events.length-1].t!=="q") events.pop();
-    events.pop(); step();
-  };
-  panel.querySelector(".answers button").focus({preventScroll:true});
+  let rem=remark(conf);
+  redraw=()=>{rem=remark(conf);render();};
+  function render(){
+    face(mood?"sly":"think");
+    const n=qCount();
+    restartBtn.hidden=n===0;
+    const text=mood?MOOD[key][LANG][0]:qText(key);
+    const labels=mood?t("moodAnswers"):t("answers");
+    panel.innerHTML=`
+      <p class="remark">${esc(rem)}</p>
+      <p class="count">${t("question")(n+1)}</p>
+      <p class="q">${esc(text)}</p>
+      <div class="answers">${labels.map((l,i)=>`<button data-i="${i}" class="${ANSCLS[i]}">${l}</button>`).join("")}</div>
+      <div class="meter"><span>${t("sure")}</span><div class="bar"><div class="fill" style="width:${Math.round(Math.min(1,conf*1.6)*100)}%"></div></div>
+      ${n?`<button class="link" id="back">${t("back")}</button>`:""}</div>`;
+    panel.querySelectorAll(".answers button").forEach(b=>b.onclick=()=>{
+      events.push({t:"q",key,val:ANSVAL[b.dataset.i],mood}); step();
+    });
+    const back=document.getElementById("back");
+    if(back) back.onclick=()=>{
+      while(events.length && events[events.length-1].t!=="q") events.pop();
+      events.pop(); step();
+    };
+    panel.querySelector(".answers button").focus({preventScroll:true});
+  }
+  render();
 }
 
 function showGuess(top,r){
-  face("happy");
-  restartBtn.hidden=false;
   const alts=r.slice(1,4).filter(x=>x.p>0.03);
-  panel.innerHTML=`
-    <div class="guess">
-      <p class="count">Ik denk dat je zin hebt in…</p>
-      <div class="emoji">${top.d.emoji}</div>
-      <h2>${top.d.name}</h2>
-      <p>${top.d.desc}</p>
-      <p class="gut">Let op je eerste gevoel nu. Opluchting of teleurstelling? Dat is je echte antwoord.</p>
-      <div class="row">
-        <button class="btn primary" id="yes">Ja, dat wordt het</button>
-        <button class="btn" id="no">Nee, iets anders</button>
-      </div>
-      ${alts.length?`<div class="alts"><h3>Ook een optie</h3><ul>${alts.map(a=>`<li><button class="alt" data-i="${a.i}"><span>${a.d.emoji}</span><span>${a.d.name}</span></button></li>`).join("")}</ul></div>`:""}
-    </div>`;
-  document.getElementById("yes").onclick=()=>done(top.d);
-  document.getElementById("no").onclick=()=>whyNot(top);
-  panel.querySelectorAll(".alt").forEach(b=>b.onclick=()=>done(DISHES[b.dataset.i]));
-  document.getElementById("yes").focus({preventScroll:true});
+  redraw=render;
+  function render(){
+    face("happy"); restartBtn.hidden=false;
+    panel.innerHTML=`
+      <div class="guess">
+        <p class="count">${t("think")}</p>
+        <div class="emoji">${top.d.emoji}</div>
+        <h2>${esc(dName(top.d))}</h2>
+        <p>${esc(dDesc(top.d))}</p>
+        <p class="gut">${t("gut")}</p>
+        <div class="row">
+          <button class="btn primary" id="yes">${t("yes")}</button>
+          <button class="btn" id="no">${t("no")}</button>
+        </div>
+        ${alts.length?`<div class="alts"><h3>${t("alts")}</h3><ul>${alts.map(a=>`<li><button class="alt" data-i="${a.i}"><span>${a.d.emoji}</span><span>${esc(dName(a.d))}</span></button></li>`).join("")}</ul></div>`:""}
+        <div class="row" style="margin-top:14px"><button class="link" id="iknow">${t("iKnow")}</button></div>
+      </div>`;
+    document.getElementById("yes").onclick=()=>done(top.d,!rejections());
+    document.getElementById("no").onclick=()=>whyNot(top);
+    document.getElementById("iknow").onclick=teach;
+    panel.querySelectorAll(".alt").forEach(b=>b.onclick=()=>done(DISHES[b.dataset.i],false));
+    document.getElementById("yes").focus({preventScroll:true});
+  }
+  render();
 }
 
 function whyNot(top){
-  face("think");
-  const opts=[["zwaar","Te zwaar"],["werk","Te veel werk"],["smaak","Heel andere smaak"],["gehad","Had ik laatst nog"]];
-  panel.innerHTML=`
-    <p class="remark">Geen ${top.d.name.toLowerCase()} dus.</p>
-    <p class="q">Wat zat je niet lekker?</p>
-    <div class="answers">${opts.map(([k,l])=>`<button data-k="${k}">${l}</button>`).join("")}</div>`;
-  panel.querySelectorAll(".answers button").forEach(b=>b.onclick=()=>{
-    events.push({t:"reject",i:top.i,reason:b.dataset.k}); step();
-  });
-  panel.querySelector(".answers button").focus({preventScroll:true});
+  redraw=render;
+  function render(){
+    face("think");
+    panel.innerHTML=`
+      <p class="remark">${esc(t("notThis")(dName(top.d)))}</p>
+      <p class="q">${t("whatWrong")}</p>
+      <div class="answers">${Object.entries(t("reasons")).map(([k,l])=>`<button data-k="${k}">${l}</button>`).join("")}</div>
+      <div class="row" style="margin-top:14px"><button class="link" id="iknow">${t("iKnow")}</button></div>`;
+    panel.querySelectorAll(".answers button").forEach(b=>b.onclick=()=>{
+      events.push({t:"reject",i:top.i,reason:b.dataset.k}); step();
+    });
+    document.getElementById("iknow").onclick=teach;
+    panel.querySelector(".answers button").focus({preventScroll:true});
+  }
+  render();
 }
 
-function done(d){
-  face("happy");
-  panel.innerHTML=`
-    <div class="guess">
-      <div class="emoji">${d.emoji}</div>
-      <h2>Eet smakelijk!</h2>
-      <p>${d.name} dus. Geraden in ${qCount()} vragen.</p>
-      <div class="row"><button class="btn primary" id="again">Nog een keer</button></div>
-    </div>`;
-  document.getElementById("again").onclick=reset;
+// Leer een nieuw gerecht op basis van de antwoorden tot nu toe
+function teach(){
+  const back=redraw;
+  redraw=render;
+  function render(){
+    face("sly");
+    const opts=DISHES.map(d=>`<option value="${esc(dName(d))}">`).join("");
+    panel.innerHTML=`
+      <p class="q">${t("teachQ")}</p>
+      <p>${t("teachP")}</p>
+      <input id="dish" class="field" list="dishlist" maxlength="60" placeholder="${esc(t("teachPh"))}" autocomplete="off">
+      <datalist id="dishlist">${opts}</datalist>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="save">${t("save")}</button>
+        <button class="btn" id="cancel">${t("cancel")}</button>
+      </div>`;
+    const inp=document.getElementById("dish");
+    inp.focus();
+    const go=()=>{
+      const name=inp.value.trim(); if(!name) return inp.focus();
+      const found=DISHES.find(d=>d.nl[0].toLowerCase()===name.toLowerCase()||d.en[0].toLowerCase()===name.toLowerCase());
+      if(found) return done(found,false);
+      const v={}; Object.keys(QUESTIONS).forEach(k=>v[k]=0.5);
+      events.filter(e=>e.t==="q"&&!e.mood&&e.val!==null).forEach(e=>{
+        if(isSoft(e.key)&&e.val<0.5) return;
+        v[e.key]=e.val>=0.5?1:0;
+      });
+      if(MEATS.some(m=>v[m]===1)){v.vega=0;v.vegan=0;}
+      const list=store.get("kookinator-custom",[]);
+      list.push({name,v}); store.set("kookinator-custom",list);
+      buildDishes();
+      const d=DISHES[DISHES.length-1];
+      done(d,false,true);
+    };
+    document.getElementById("save").onclick=go;
+    inp.onkeydown=e=>{if(e.key==="Enter")go();};
+    document.getElementById("cancel").onclick=()=>back();
+  }
+  render();
+}
+
+function done(d,firstTry,learned){
+  record(d,firstTry);
+  const n=qCount();
+  redraw=render;
+  function render(){
+    face("happy");
+    panel.innerHTML=`
+      <div class="guess">
+        <div class="emoji">${d.emoji}</div>
+        <h2>${t("enjoy")}</h2>
+        <p>${esc(learned?t("learned")(dName(d)):t("guessedIn")(dName(d),n))}</p>
+        <div class="row">
+          <a class="btn primary" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent(t("recipeQ")+" "+dName(d))}">${t("recipe")}</a>
+          <button class="btn" id="share">${t("share")}</button>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="btn" id="again">${t("again")}</button></div>
+      </div>`;
+    document.getElementById("again").onclick=reset;
+    const sb=document.getElementById("share");
+    sb.onclick=async()=>{
+      const text=t("shareText")(n,dName(d),d.emoji);
+      const url=location.href.split("#")[0];
+      try{
+        if(navigator.share){ await navigator.share({title:"De Kookinator",text,url}); return; }
+        await navigator.clipboard.writeText(text+" "+url);
+        sb.textContent=t("copied");
+      }catch(e){ if(e&&e.name!=="AbortError") sb.textContent=t("copyFail"); }
+    };
+  }
+  render();
 }
 
 function noMore(){
-  face("sad");
-  panel.innerHTML=`
-    <div class="guess">
-      <div class="emoji">🤷</div>
-      <h2>Ik ben door mijn recepten heen</h2>
-      <p>Je hebt alles afgewezen. Tijd voor een boterham, of begin opnieuw en antwoord wat ruimer.</p>
-      <div class="row"><button class="btn primary" id="again">Opnieuw beginnen</button></div>
-    </div>`;
-  document.getElementById("again").onclick=reset;
+  redraw=render;
+  function render(){
+    face("sad");
+    panel.innerHTML=`
+      <div class="guess">
+        <div class="emoji">🤷</div>
+        <h2>${t("noMoreH")}</h2>
+        <p>${t("noMoreP")}</p>
+        <div class="row">
+          <button class="btn primary" id="teach">${t("teachBtn")}</button>
+          <button class="btn" id="again">${t("restart")}</button>
+        </div>
+      </div>`;
+    document.getElementById("teach").onclick=teach;
+    document.getElementById("again").onclick=reset;
+  }
+  render();
+}
+
+function showStats(){
+  const back=redraw;
+  let confirmReset=false;
+  redraw=render;
+  function render(){
+    face("idle");
+    const s=loadStats();
+    const pct=s.games?Math.round(s.first/s.games*100)+"%":"–";
+    const avg=s.games?(s.questions/s.games).toFixed(1).replace(".",LANG==="nl"?",":"."):"–";
+    const byKey=Object.fromEntries(DISHES.map(d=>[d.key,d]));
+    const top=Object.entries(s.dishes).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const custom=store.get("kookinator-custom",[]);
+    panel.innerHTML=`
+      <p class="q">${t("statsH")}</p>
+      <div class="stats">
+        <div><b>${s.games}</b><span>${t("sGames")}</span></div>
+        <div><b>${pct}</b><span>${t("sFirst")}</span></div>
+        <div><b>${avg}</b><span>${t("sAvg")}</span></div>
+      </div>
+      <div class="alts"><h3>${t("sTop")}</h3>${top.length?`<ul>${top.map(([k,c])=>{const d=byKey[k];return `<li><span>${d?d.emoji:"🍽️"}</span><span>${esc(d?dName(d):k)} (${c}×)</span></li>`;}).join("")}</ul>`:`<p>${t("sNone")}</p>`}</div>
+      <div class="alts"><h3>${t("sCustom")}</h3>${custom.length?`<ul>${custom.map((c,i)=>`<li><span>🍽️</span><span style="flex:1">${esc(c.name)}</span><button class="link" data-del="${i}">${t("sDel")}</button></li>`).join("")}</ul>`:`<p>${t("sNone")}</p>`}</div>
+      <p class="count" style="margin-top:14px">${t("statsNote")}</p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="sback">${t("back")}</button>
+        <button class="btn" id="sreset">${confirmReset?t("sResetConfirm"):t("sReset")}</button>
+      </div>`;
+    panel.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+      const list=store.get("kookinator-custom",[]); list.splice(+b.dataset.del,1);
+      store.set("kookinator-custom",list); buildDishes(); render();
+    });
+    document.getElementById("sback").onclick=()=>{ statsBtn.hidden=false; back(); };
+    document.getElementById("sreset").onclick=()=>{
+      if(!confirmReset){confirmReset=true;return render();}
+      store.set("kookinator-stats",{games:0,first:0,questions:0,dishes:{}});
+      store.set("kookinator-custom",[]); buildDishes(); confirmReset=false; render();
+    };
+  }
+  statsBtn.hidden=true;
+  render();
 }
 
 function intro(){
-  face("idle");
-  restartBtn.hidden=true;
-  panel.innerHTML=`
-    <div class="intro">
-      <p class="q">Geen idee wat je vanavond eet?</p>
-      <p>Ik ken ${DISHES.length} gerechten. Eerst een paar vragen over jou, daarna over eten. Antwoord op gevoel, niet op wat je hoort te willen.</p>
-      <div class="row"><button class="btn primary" id="start">Begin</button></div>
-    </div>`;
-  document.getElementById("start").onclick=step;
+  redraw=render;
+  function render(){
+    face("idle"); restartBtn.hidden=true;
+    panel.innerHTML=`
+      <div class="intro">
+        <p class="q">${t("introQ")}</p>
+        <p>${t("intro")(DISHES.length)}</p>
+        <div class="row"><button class="btn primary" id="start">${t("start")}</button></div>
+      </div>`;
+    document.getElementById("start").onclick=step;
+  }
+  render();
 }
+
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.title=LANG==="en"?"The Kookinator – what should I eat tonight?":"De Kookinator – wat eet ik vanavond?";
+  restartBtn.textContent=t("restart");
+  statsBtn.textContent=t("stats");
+  langBtn.textContent=t("langBtn");
+  langBtn.setAttribute("aria-label",LANG==="en"?"Nederlands":"English");
+  document.getElementById("foot").textContent=t("foot");
+  document.getElementById("copy").textContent=t("copy");
+}
+langBtn.onclick=()=>{ LANG=LANG==="nl"?"en":"nl"; store.set("kookinator-lang",LANG); applyLang(); redraw(); };
+statsBtn.onclick=showStats;
 
 function reset(){
   events=[];
+  statsBtn.hidden=false;
   const keys=Object.keys(MOOD).sort(()=>Math.random()-.5);
-  // koude-weervraag heeft weinig zin in de zomer
   const m=now.getMonth();
   moodQueue=keys.filter(k=>!(k==="weer"&&m>=5&&m<=7)).slice(0,3);
   intro();
 }
 restartBtn.onclick=reset;
+applyLang();
 reset();
 </script>
 </body>
